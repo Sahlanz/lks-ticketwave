@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard — TicketWave</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a0f;color:#e2e8f0}
+    nav{background:rgba(0,0,0,0.8);padding:0 2rem;display:flex;
+        justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.1)}
+    .brand{color:white;font-size:1.4rem;font-weight:900;padding:1rem 0;
+           background:linear-gradient(135deg,#f59e0b,#ef4444);
+           -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .nav-links a{color:#94a3b8;text-decoration:none;padding:0.5rem 1rem;border-radius:6px;font-size:0.88rem}
+    .nav-links a:hover{color:white}
+    main{max-width:1200px;margin:1.5rem auto;padding:0 1rem}
+    .page-title{font-size:1.4rem;font-weight:800;margin-bottom:1.5rem;
+                display:flex;justify-content:space-between;align-items:center}
+    .page-title span:first-child{background:linear-gradient(135deg,#f59e0b,#ef4444);
+                                  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem}
+    .stat-card{background:rgba(255,255,255,0.04);border-radius:12px;padding:1.2rem;
+               border:1px solid rgba(255,255,255,0.08)}
+    .stat-label{font-size:0.72rem;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem}
+    .stat-val{font-size:1.9rem;font-weight:900;
+              background:linear-gradient(135deg,#f59e0b,#ef4444);
+              -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem}
+    .panel{background:rgba(255,255,255,0.04);border-radius:12px;padding:1.5rem;
+           border:1px solid rgba(255,255,255,0.08)}
+    .panel-title{font-size:0.88rem;font-weight:700;color:#94a3b8;
+                 margin-bottom:1rem;display:flex;justify-content:space-between}
+    .btn-sm{padding:0.3rem 0.8rem;border-radius:6px;border:none;cursor:pointer;
+            font-size:0.78rem;font-weight:700}
+    .btn-orange{background:linear-gradient(135deg,#f59e0b,#ef4444);color:white}
+    table{width:100%;border-collapse:collapse;font-size:0.8rem}
+    th{color:#475569;padding:0.5rem;text-align:left;font-weight:500;
+       border-bottom:1px solid rgba(255,255,255,0.06)}
+    td{padding:0.5rem;border-bottom:1px solid rgba(255,255,255,0.04);color:#94a3b8}
+    td:first-child{color:#e2e8f0;font-family:monospace}
+    .badge{padding:0.15rem 0.6rem;border-radius:999px;font-size:0.7rem;font-weight:700}
+    .badge-ok{background:rgba(34,197,94,0.15);color:#4ade80}
+    .badge-pending{background:rgba(245,158,11,0.15);color:#fbbf24}
+    .empty-msg{text-align:center;color:#475569;padding:1.5rem;font-size:0.82rem}
+    .create-form input,.create-form select{
+      width:100%;padding:0.6rem 0.8rem;background:rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.1);border-radius:7px;
+      color:white;font-size:0.85rem;font-family:inherit;margin-bottom:0.8rem}
+    .create-form input::placeholder{color:#475569}
+    .create-form select option{background:#1e293b}
+    .create-row{display:grid;grid-template-columns:1fr 1fr;gap:0.8rem}
+    .create-btn{width:100%;background:linear-gradient(135deg,#f59e0b,#ef4444);
+                color:white;border:none;padding:0.7rem;border-radius:8px;
+                font-weight:700;cursor:pointer;font-size:0.88rem}
+    #create-status{font-size:0.82rem;margin-top:0.5rem;min-height:1.2rem;text-align:center}
+    .full{grid-column:1/-1}
+    .refresh-note{font-size:0.75rem;color:#475569}
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="brand">TicketWave</div>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/events">Events</a>
+      <a href="/checkout">Buy Tickets</a>
+    </div>
+  </nav>
+  <main>
+    <div class="page-title">
+      <span>📊 Operations Dashboard</span>
+      <span class="refresh-note">Auto-refreshes every 15s</span>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-label">Active Events</div>
+        <div class="stat-val" id="d-events">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Bookings</div>
+        <div class="stat-val" id="d-bookings">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Tickets Sold</div>
+        <div class="stat-val" id="d-tickets">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Revenue</div>
+        <div class="stat-val" id="d-revenue">-</div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel">
+        <div class="panel-title">
+          <span>🎪 Create New Event</span>
+        </div>
+        <div class="create-form">
+          <input type="text" id="c-title" placeholder="Event title *"/>
+          <div class="create-row">
+            <input type="text" id="c-venue" placeholder="Venue *"/>
+            <input type="datetime-local" id="c-date"/>
+          </div>
+          <div class="create-row">
+            <select id="c-category">
+              <option value="Music">🎵 Music</option>
+              <option value="Sport">⚽ Sport</option>
+              <option value="Culture">🎭 Culture</option>
+              <option value="General">🎪 General</option>
+            </select>
+            <input type="number" id="c-price" placeholder="Price (Rp) *"/>
+          </div>
+          <div class="create-row">
+            <input type="number" id="c-tickets" placeholder="Total tickets *"/>
+            <input type="text" id="c-organizer" placeholder="Organizer name"/>
+          </div>
+          <textarea id="c-desc" placeholder="Event description..."
+            style="width:100%;padding:0.6rem 0.8rem;background:rgba(255,255,255,0.06);
+                   border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:white;
+                   font-family:inherit;resize:vertical;min-height:70px;
+                   margin-bottom:0.8rem;font-size:0.85rem"></textarea>
+          <button class="create-btn" onclick="createEvent()">+ Create Event</button>
+          <div id="create-status"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <span>🎟️ Recent Bookings</span>
+          <button class="btn-sm btn-orange" onclick="loadAll()">🔄 Refresh</button>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Booking ID</th><th>Customer</th><th>Event</th><th>Qty</th><th>Status</th></tr>
+          </thead>
+          <tbody id="bookings-table">
+            <tr><td colspan="5" class="empty-msg">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="panel full">
+        <div class="panel-title">
+          <span>📋 All Events</span>
+        </div>
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Title</th><th>Venue</th><th>Date</th>
+                <th>Price</th><th>Available</th><th>Status</th></tr>
+          </thead>
+          <tbody id="events-table">
+            <tr><td colspan="7" class="empty-msg">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function fmtPrice(p) { return 'Rp ' + Number(p).toLocaleString('id-ID'); }
+    function fmtDate(iso) {
+      return new Date(iso).toLocaleDateString('en-US',{day:'numeric',month:'short'});
+    }
+
+    async function loadStats() {
+      const res = await fetch('/api/stats');
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('d-events').textContent = data.data.active_events;
+        document.getElementById('d-bookings').textContent = data.data.confirmed_bookings;
+        document.getElementById('d-tickets').textContent = data.data.total_tickets_sold;
+        document.getElementById('d-revenue').textContent =
+          'Rp ' + (data.data.total_revenue / 1000000).toFixed(1) + 'M';
+      }
+    }
+
+    async function loadBookings() {
+      const res = await fetch('/api/bookings');
+      const data = await res.json();
+      const items = (data.data || []).slice(0, 10);
+      const tbody = document.getElementById('bookings-table');
+      if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">No bookings yet</td></tr>';
+        return;
+      }
+      tbody.innerHTML = items.map(b => `
+        <tr>
+          <td>${b.id}</td>
+          <td style="color:#e2e8f0">${b.customer_name}</td>
+          <td>${(b.event_title||'').substring(0,20)}...</td>
+          <td style="color:#f59e0b;font-weight:700">${b.quantity}</td>
+          <td><span class="badge ${b.status==='confirmed'?'badge-ok':'badge-pending'}">
+            ${b.status}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    async function loadEvents() {
+      const res = await fetch('/api/events');
+      const data = await res.json();
+      const items = data.data || [];
+      const tbody = document.getElementById('events-table');
+      if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">No events found</td></tr>';
+        return;
+      }
+      tbody.innerHTML = items.map(e => `
+        <tr>
+          <td>${e.id}</td>
+          <td style="color:#e2e8f0;font-weight:600">${e.title}</td>
+          <td>${e.venue}</td>
+          <td>${fmtDate(e.date)}</td>
+          <td style="color:#f59e0b">${fmtPrice(e.price)}</td>
+          <td style="color:${e.available_tickets<20?'#ef4444':'#4ade80'};font-weight:700">
+            ${e.available_tickets}</td>
+          <td><span class="badge badge-ok">${e.status}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    async function createEvent() {
+      const status = document.getElementById('create-status');
+      const body = {
+        title: document.getElementById('c-title').value,
+        venue: document.getElementById('c-venue').value,
+        date: document.getElementById('c-date').value
+              ? new Date(document.getElementById('c-date').value).toISOString() : '',
+        category: document.getElementById('c-category').value,
+        price: document.getElementById('c-price').value,
+        total_tickets: document.getElementById('c-tickets').value,
+        organizer: document.getElementById('c-organizer').value,
+        description: document.getElementById('c-desc').value
+      };
+      status.textContent = '⏳ Creating...';
+      status.style.color = '#94a3b8';
+      try {
+        const res = await fetch('/api/events', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) {
+          status.textContent = `✅ Event created: ${data.data.id}`;
+          status.style.color = '#4ade80';
+          ['c-title','c-venue','c-date','c-price','c-tickets','c-organizer','c-desc']
+            .forEach(id => document.getElementById(id).value = '');
+          loadAll();
+        } else {
+          status.textContent = '❌ ' + data.message;
+          status.style.color = '#f87171';
+        }
+      } catch(err) {
+        status.textContent = '❌ ' + err.message;
+        status.style.color = '#f87171';
+      }
+    }
+
+    function loadAll() { loadStats(); loadBookings(); loadEvents(); }
+    loadAll();
+    setInterval(loadAll, 15000);
+  </script>
+</body>
+</html>
