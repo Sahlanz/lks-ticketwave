@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Checkout — TicketWave</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a0f;color:#e2e8f0}
+    nav{background:rgba(0,0,0,0.8);padding:0 2rem;display:flex;
+        justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.1)}
+    .brand{color:white;font-size:1.4rem;font-weight:900;padding:1rem 0;
+           background:linear-gradient(135deg,#f59e0b,#ef4444);
+           -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .nav-back{color:#94a3b8;text-decoration:none;padding:0.5rem 1rem;border-radius:6px}
+    .nav-back:hover{color:white;background:rgba(255,255,255,0.1)}
+    .container{max-width:900px;margin:2rem auto;padding:0 1rem;
+               display:grid;grid-template-columns:1fr 380px;gap:1.5rem}
+    .card{background:rgba(255,255,255,0.04);border-radius:16px;padding:1.8rem;
+          border:1px solid rgba(255,255,255,0.08)}
+    .card-title{font-size:1rem;font-weight:700;margin-bottom:1.5rem;
+                padding-bottom:0.8rem;border-bottom:1px solid rgba(255,255,255,0.08);
+                display:flex;align-items:center;gap:0.5rem}
+    label{display:block;font-size:0.82rem;font-weight:600;color:#94a3b8;margin-bottom:0.35rem}
+    input,select{width:100%;padding:0.75rem 1rem;background:rgba(255,255,255,0.06);
+                 border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;
+                 color:white;font-size:0.95rem;font-family:inherit;
+                 transition:border-color 0.2s;margin-bottom:1rem}
+    input:focus,select:focus{outline:none;border-color:#f59e0b;background:rgba(245,158,11,0.06)}
+    input::placeholder{color:#475569}
+    select option{background:#1e293b}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    .btn-submit{width:100%;background:linear-gradient(135deg,#f59e0b,#ef4444);
+                color:white;border:none;padding:1rem;border-radius:10px;
+                font-size:1.05rem;font-weight:800;cursor:pointer;margin-top:0.5rem}
+    .btn-submit:hover{opacity:0.9}
+    .btn-submit:disabled{opacity:0.4;cursor:not-allowed}
+    .event-summary{background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);
+                   border-radius:12px;padding:1.5rem;margin-bottom:1.5rem}
+    .event-summary h3{font-size:1.1rem;font-weight:800;margin-bottom:0.5rem}
+    .event-summary p{font-size:0.82rem;color:#94a3b8;line-height:1.7}
+    .price-row{display:flex;justify-content:space-between;padding:0.5rem 0;font-size:0.88rem}
+    .price-row.total{border-top:1px solid rgba(255,255,255,0.1);margin-top:0.5rem;
+                     padding-top:0.8rem;font-weight:800;font-size:1rem;color:#f59e0b}
+    .alert{border-radius:10px;padding:1rem;margin-top:1rem;font-size:0.9rem;display:none}
+    .alert-ok{background:rgba(34,197,94,0.1);color:#4ade80;border:1px solid rgba(34,197,94,0.3)}
+    .alert-err{background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.3)}
+    .success-view{text-align:center;padding:2rem;display:none}
+    .success-icon{font-size:4rem;margin-bottom:1rem}
+    .booking-id{font-family:monospace;font-size:1.3rem;font-weight:800;
+                color:#f59e0b;margin:1rem 0}
+    @media(max-width:700px){.container{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="brand">TicketWave</div>
+    <a href="/events" class="nav-back">← Back to Events</a>
+  </nav>
+  <div class="container">
+    <div>
+      <div class="card" id="form-card">
+        <div class="card-title">🎟️ Ticket Purchase Form</div>
+        <form id="checkout-form">
+          <input type="hidden" name="event_id" id="f-event-id"/>
+          <div class="row">
+            <div>
+              <label>Full Name *</label>
+              <input type="text" name="customer_name" placeholder="Your full name" required/>
+            </div>
+            <div>
+              <label>Email Address *</label>
+              <input type="email" name="customer_email" placeholder="your@email.com" required/>
+            </div>
+          </div>
+          <label>Phone Number</label>
+          <input type="tel" name="customer_phone" placeholder="+62 8xx xxxx xxxx"/>
+          <label>Number of Tickets *</label>
+          <select name="quantity" id="f-qty" required onchange="updateSummary()">
+            <option value="1">1 Ticket</option>
+            <option value="2">2 Tickets</option>
+            <option value="3">3 Tickets</option>
+            <option value="4">4 Tickets</option>
+            <option value="5">5 Tickets</option>
+          </select>
+          <button type="submit" class="btn-submit" id="btn-buy">🎟 Complete Purchase</button>
+        </form>
+        <div class="alert alert-ok" id="alert-ok"></div>
+        <div class="alert alert-err" id="alert-err"></div>
+      </div>
+
+      <div class="success-view" id="success-view">
+        <div class="success-icon">🎉</div>
+        <h2 style="color:white;margin-bottom:0.5rem">Purchase Successful!</h2>
+        <p style="color:#94a3b8">Your booking confirmation will be sent to your email shortly.</p>
+        <div class="booking-id" id="res-booking-id">-</div>
+        <p style="color:#64748b;font-size:0.85rem">Screenshot or save your Booking ID</p>
+        <br/>
+        <a href="/events" style="display:inline-block;background:linear-gradient(135deg,#f59e0b,#ef4444);
+           color:white;text-decoration:none;padding:0.8rem 2rem;border-radius:8px;font-weight:700;margin-top:1rem">
+          Browse More Events →
+        </a>
+      </div>
+    </div>
+
+    <div>
+      <div class="event-summary" id="event-summary">
+        <div style="color:#94a3b8;font-size:0.85rem">Loading event details...</div>
+      </div>
+      <div class="card" id="price-card" style="display:none">
+        <div class="card-title">💰 Order Summary</div>
+        <div class="price-row">
+          <span>Price per ticket</span>
+          <span id="p-unit">-</span>
+        </div>
+        <div class="price-row">
+          <span>Quantity</span>
+          <span id="p-qty">-</span>
+        </div>
+        <div class="price-row total">
+          <span>Total</span>
+          <span id="p-total">-</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const eventId = params.get('event_id');
+    let currentEvent = null;
+
+    function formatPrice(p) {
+      return 'Rp ' + Number(p).toLocaleString('id-ID');
+    }
+
+    function updateSummary() {
+      if (!currentEvent) return;
+      const qty = parseInt(document.getElementById('f-qty').value);
+      document.getElementById('p-unit').textContent = formatPrice(currentEvent.price);
+      document.getElementById('p-qty').textContent = qty;
+      document.getElementById('p-total').textContent = formatPrice(currentEvent.price * qty);
+    }
+
+    async function loadEvent() {
+      if (!eventId) {
+        document.getElementById('event-summary').innerHTML =
+          '<div style="color:#ef4444">No event selected. <a href="/events" style="color:#f59e0b">Browse events →</a></div>';
+        return;
+      }
+      try {
+        const res = await fetch(`/api/events/${eventId}`);
+        const data = await res.json();
+        currentEvent = data.data;
+        document.getElementById('f-event-id').value = currentEvent.id;
+        document.getElementById('event-summary').innerHTML = `
+          <h3>${currentEvent.title}</h3>
+          <p>📍 ${currentEvent.venue}<br/>
+          📅 ${new Date(currentEvent.date).toLocaleString('en-US')}<br/>
+          🎟 ${currentEvent.available_tickets} tickets available<br/>
+          🏢 ${currentEvent.organizer}</p>
+        `;
+        document.getElementById('price-card').style.display = 'block';
+        updateSummary();
+      } catch(err) {
+        document.getElementById('event-summary').innerHTML =
+          `<div style="color:#ef4444">Failed to load event: ${err.message}</div>`;
+      }
+    }
+
+    document.getElementById('checkout-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btn-buy');
+      const alertOk = document.getElementById('alert-ok');
+      const alertErr = document.getElementById('alert-err');
+      const body = Object.fromEntries(new FormData(e.target).entries());
+
+      btn.disabled = true;
+      btn.textContent = '⏳ Processing...';
+      alertOk.style.display = 'none';
+      alertErr.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/tickets/purchase', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('form-card').style.display = 'none';
+          document.getElementById('res-booking-id').textContent = data.booking_id;
+          document.getElementById('success-view').style.display = 'block';
+        } else {
+          alertErr.textContent = '❌ ' + data.message;
+          alertErr.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = '🎟 Complete Purchase';
+        }
+      } catch(err) {
+        alertErr.textContent = '❌ Failed: ' + err.message;
+        alertErr.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = '🎟 Complete Purchase';
+      }
+    });
+
+    loadEvent();
+  </script>
+</body>
+</html>
