@@ -1,0 +1,115 @@
+name: LKS Deployment Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'app.js'
+      - 'worker.js'
+      - 'routes/**'
+      - 'services/**'
+      - 'public/**'
+      - 'package.json'
+      - 'ecosystem.config.js'
+      - '.github/workflows/lks-deployment-pipeline.yml'
+
+jobs:
+  deploy-application:
+    name: Deploy Application to EC2
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      - name: Create deployment package
+        run: |
+          zip -r ticketwave-deploy.zip . \
+            --exclude "*.git*" \
+            --exclude ".github/*" \
+            --exclude "node_modules/*"
+
+      - name: Upload artifact to S3
+        run: |
+          aws s3 cp ticketwave-deploy.zip \
+            s3://${{ secrets.S3_ARTIFACTS_BUCKET }}/ticketwave-${{ github.sha }}.zip
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+            aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            aws configure set aws_session_token ${{ secrets.AWS_SESSION_TOKEN }}
+            aws configure set region us-east-1
+
+            aws s3 cp \
+              s3://${{ secrets.S3_ARTIFACTS_BUCKET }}/ticketwave-${{ github.sha }}.zip \
+              /home/ec2-user/deploy.zip
+
+            mkdir -p /home/ec2-user/app
+            unzip -o /home/ec2-user/deploy.zip -d /home/ec2-user/app
+            cd /home/ec2-user/app
+
+            cat > .env << 'ENVEOF'
+            PORT=3000
+            AWS_REGION=us-east-1
+            AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+            AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            AWS_SESSION_TOKEN=${{ secrets.AWS_SESSION_TOKEN }}
+            SQS_PURCHASES_URL=${{ secrets.SQS_PURCHASES_URL }}
+            SQS_NOTIFICATIONS_URL=${{ secrets.SQS_NOTIFICATIONS_URL }}
+            SNS_CONFIRMATIONS_ARN=${{ secrets.SNS_CONFIRMATIONS_ARN }}
+            SNS_ALERTS_ARN=${{ secrets.SNS_ALERTS_ARN }}
+            DYNAMODB_EVENTS=lks-ticketwave-events
+            DYNAMODB_BOOKINGS=lks-ticketwave-bookings
+            S3_ASSETS_BUCKET=${{ secrets.S3_ASSETS_BUCKET }}
+            CW_NAMESPACE=TicketWave/Sales
+            APP_VERSION=${{ github.sha }}
+            ENVEOF
+
+            npm install --production
+            pm2 delete all 2>/dev/null || true
+            pm2 start ecosystem.config.js
+            pm2 save
+
+  sync-assets:
+    name: Sync Static Assets to S3
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      - name: Create and sync default assets
+        run: |
+          mkdir -p assets/banners
+          echo '{"app":"TicketWave","version":"1.0.0","commit":"${{ github.sha }}"}' \
+            > assets/meta.json
+
+          aws s3 cp assets/meta.json \
+            s3://${{ secrets.S3_ASSETS_BUCKET }}/meta.json
+
+          aws s3 cp assets/ \
+            s3://${{ secrets.S3_ASSETS_BUCKET }}/assets/ \
+            --recursive 2>/dev/null || true
+
+          echo "Assets synced successfully"
